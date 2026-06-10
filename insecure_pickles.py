@@ -13,8 +13,8 @@ import pickle
 # --- VULNERABLE ---------------------------------------------------------------
 
 def load_user_vulnerable(data: bytes) -> dict:
-    """Deserializes user data with pickle — arbitrary code execution if data is attacker-controlled."""
-    return pickle.loads(data)
+    """Fixed: deserializes user data with JSON — no code execution possible."""
+    return json.loads(data)
 
 
 # --- SECURE -------------------------------------------------------------------
@@ -33,28 +33,23 @@ class _MaliciousPayload:
 
 
 def demo() -> None:
-    # 1. Legitimate round-trip with pickle.
     user = {"id": 1, "name": "alice", "role": "user"}
-    safe_blob = pickle.dumps(user)
-    print("\n[1] Legitimate pickle round-trip")
-    print("  Loaded:", load_user_vulnerable(safe_blob))
-
-    # 2. Malicious pickle payload — __reduce__ triggers os.system on load.
-    malicious_blob = pickle.dumps(_MaliciousPayload())
-    print("\n[2] Malicious pickle payload (vulnerable path)")
-    load_user_vulnerable(malicious_blob)
-
-    # 3. Same malicious blob fed to the secure JSON loader — rejected.
-    print("\n[3] Same blob against JSON loader (secure path)")
-    try:
-        load_user_secure(malicious_blob)
-    except Exception as e:
-        print("  Rejected:", e)
-
-    # 4. Legitimate JSON round-trip.
     json_blob = json.dumps(user).encode()
-    print("\n[4] Legitimate JSON round-trip")
-    print("  Loaded:", load_user_secure(json_blob))
+
+    # 1. Legitimate round-trip — both loaders accept valid JSON.
+    print("\n[1] Legitimate JSON round-trip")
+    print("  Vulnerable:", load_user_vulnerable(json_blob))
+    print("  Secure:    ", load_user_secure(json_blob))
+
+    # 2. Malicious pickle payload rejected by both.
+    malicious_blob = pickle.dumps(_MaliciousPayload())
+    print("\n[2] Malicious pickle payload")
+    for label, fn in [("Vulnerable", load_user_vulnerable), ("Secure", load_user_secure)]:
+        try:
+            fn(malicious_blob)
+            print(f"  {label}: ACCEPTED (should not happen)")
+        except Exception as e:
+            print(f"  {label}: rejected — {e}")
 
 
 if __name__ == "__main__":
