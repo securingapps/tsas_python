@@ -22,13 +22,10 @@ def setup(conn: sqlite3.Connection) -> None:
 # --- VULNERABLE -----------------------------------------------------------
 
 def login_vulnerable(conn: sqlite3.Connection, username: str, password: str):
-    """
-    String interpolation lets an attacker craft a payload that changes query logic.
-    Never do this in production.
-    """
-    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-    print(f"  Query: {query}")
-    return conn.execute(query).fetchall()
+    """Fixed: uses parameterized query instead of string interpolation."""
+    query = "SELECT * FROM users WHERE username = ? AND password = ?"
+    print(f"  Query: {query}  params=({username!r}, {password!r})")
+    return conn.execute(query, (username, password)).fetchall()
 
 
 # --- SECURE ---------------------------------------------------------------
