@@ -35,23 +35,13 @@ def create_token(payload: dict) -> str:
 # --- VULNERABLE ---------------------------------------------------------------
 
 def verify_vulnerable(token: str) -> dict:
-    """Reads alg from the token header and trusts it — accepts 'none'."""
+    """Fixed: always verifies with HS256 — ignores the alg field in the header."""
     header_b64, payload_b64, sig_b64 = token.split(".")
-    header = json.loads(_b64url_decode(header_b64))
-    alg = header.get("alg", "")
-
-    if alg == "none":
-        # No signature check at all — attacker controls the payload entirely.
-        pass
-    elif alg == "HS256":
-        expected = hmac.new(
-            SECRET.encode(), f"{header_b64}.{payload_b64}".encode(), hashlib.sha256
-        ).digest()
-        if not hmac.compare_digest(_b64url_decode(sig_b64), expected):
-            raise ValueError("Invalid signature")
-    else:
-        raise ValueError(f"Unsupported algorithm: {alg}")
-
+    expected = hmac.new(
+        SECRET.encode(), f"{header_b64}.{payload_b64}".encode(), hashlib.sha256
+    ).digest()
+    if not hmac.compare_digest(_b64url_decode(sig_b64), expected):
+        raise ValueError("Invalid signature")
     return json.loads(_b64url_decode(payload_b64))
 
 
